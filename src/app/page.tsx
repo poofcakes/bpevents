@@ -1,0 +1,136 @@
+
+"use client";
+
+import { useState, useEffect } from 'react';
+import Header from '@/components/Header';
+import DailyTimeline from '@/components/DailyTimeline';
+import WeeklyTimeline from '@/components/WeeklyTimeline';
+import MonthlyTimeline from '@/components/MonthlyTimeline';
+import ResetTimers from '@/components/ResetTimers';
+import Image from 'next/image';
+import Link from 'next/link';
+import AccentColorSelector from '@/components/AccentColorSelector';
+import { getImagePath } from '@/lib/utils';
+
+export type TimeDisplayMode = 'game' | 'local';
+export type TimeFormat = '12h' | '24h';
+
+export default function Home() {
+  const [timeMode, setTimeMode] = useState<TimeDisplayMode>('game');
+  const [timeFormat, setTimeFormat] = useState<TimeFormat>('24h');
+  const [mounted, setMounted] = useState(false);
+
+  // Load preferences from localStorage on mount
+  useEffect(() => {
+    setMounted(true);
+    const savedTimeMode = localStorage.getItem('timeMode') as TimeDisplayMode | null;
+    const savedTimeFormat = localStorage.getItem('timeFormat') as TimeFormat | null;
+    
+    if (savedTimeMode === 'game' || savedTimeMode === 'local') {
+      setTimeMode(savedTimeMode);
+    }
+    if (savedTimeFormat === '12h' || savedTimeFormat === '24h') {
+      setTimeFormat(savedTimeFormat);
+    }
+  }, []);
+
+  // Save timeMode to localStorage when it changes
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem('timeMode', timeMode);
+    }
+  }, [timeMode, mounted]);
+
+  // Save timeFormat to localStorage when it changes
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem('timeFormat', timeFormat);
+    }
+  }, [timeFormat, mounted]);
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Header 
+        timeMode={timeMode} 
+        setTimeMode={setTimeMode} 
+        timeFormat={timeFormat}
+        setTimeFormat={setTimeFormat}
+      />
+      <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
+        <div>
+          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg">
+            ⏰ Reset Timers
+          </h2>
+          <ResetTimers />
+        </div>
+        <div>
+          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg">
+            📅 Today's Timeline
+          </h2>
+          <DailyTimeline timeMode={timeMode} timeFormat={timeFormat} />
+        </div>
+        <div>
+          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg">
+            📆 This Week's Schedule
+          </h2>
+          <WeeklyTimeline />
+        </div>
+        <div>
+          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg">
+            🗓️ Monthly Events
+          </h2>
+          <MonthlyTimeline />
+        </div>
+        <div className="space-y-4">
+           <h2 className="text-3xl font-bold font-headline gradient-text drop-shadow-lg">
+            🎯 Monster Hunter Times
+          </h2>
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="lg:w-80 flex-shrink-0">
+              <div className="bg-card border rounded-lg p-4 space-y-3">
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-foreground">Field Bosses</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Field bosses respawn every <span className="font-semibold text-foreground">:00</span> and <span className="font-semibold text-foreground">:30</span> past the hour.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-foreground">Rare Spawns</h3>
+                  <p className="text-sm text-muted-foreground">
+                    For rare spawn locations, refer to the map on the right.
+                  </p>
+                </div>
+                <div className="pt-2 border-t space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    For detailed world boss respawn times, please refer to <Link href="https://bptimer.com/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline transition-colors font-semibold">bptimer.com</Link>.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    For Loyal Boar (Golden Pig) respawn times, please refer to <Link href="https://pigtastic.netlify.app/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline transition-colors font-semibold">pigtastic.netlify.app</Link>.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 flex justify-center">
+              <div className="max-w-4xl w-full">
+                <Image
+                  src={getImagePath("/images/spawnpoints_rares.webp")}
+                  alt="Rare spawn points map"
+                  width={1920}
+                  height={1080}
+                  className="rounded-lg border w-full h-auto"
+                  priority
+                />
+                <p className="text-xs text-muted-foreground text-center mt-2">Map credit to original creator.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      <footer className="text-center py-4 text-muted-foreground text-sm border-t space-y-2">
+        <p>BP:SR Event Tracker | Blue Protocol: Star Resonance</p>
+        <p>Last Updated: 20.12.2025</p>
+        <AccentColorSelector />
+      </footer>
+    </div>
+  );
+}
