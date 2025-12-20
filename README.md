@@ -122,7 +122,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is open source and available under the MIT License.
+Copyright (c) 2025 BP:SR Event Tracker - All Rights Reserved.
+
+This project is proprietary software. Commercial use and distribution are prohibited. 
+See [LICENSE](LICENSE) for full terms.
 
 ## Acknowledgments
 

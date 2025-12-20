@@ -16,7 +16,7 @@ export type TimeDisplayMode = 'game' | 'local';
 export type TimeFormat = '12h' | '24h';
 
 export default function Home() {
-  const [timeMode, setTimeMode] = useState<TimeDisplayMode>('game');
+  const [timeMode, setTimeMode] = useState<TimeDisplayMode>('local');
   const [timeFormat, setTimeFormat] = useState<TimeFormat>('24h');
   const [mounted, setMounted] = useState(false);
 

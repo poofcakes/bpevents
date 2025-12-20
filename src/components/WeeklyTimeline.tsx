@@ -510,13 +510,13 @@ export default function WeeklyTimeline() {
     const EventColumn = ({ dayIndex, dayCategories }: { dayIndex: number; dayCategories: Record<string, GameEvent[]> }) => {
         if (gameWeekNumber === 1 && dayIndex < 3) {
             return (
-                <div className="bg-card/50 p-2 rounded-b-lg space-y-2 min-h-[100px] border-t border-border/20 flex items-center justify-center">
+                <div className="bg-card p-2 rounded-b-lg space-y-2 min-h-[100px] border-t border-border/20 flex items-center justify-center">
                      <p className="text-center text-xs text-muted-foreground">Pre-Launch</p>
                 </div>
             );
         }
         return (
-             <div className="bg-card/50 p-2 rounded-b-lg space-y-2 min-h-[100px] border-t border-border/20">
+             <div className="bg-card p-2 rounded-b-lg space-y-2 min-h-[100px] border-t border-border/20">
                 {Object.keys(dayCategories).length === 0 ? (
                     <div className="text-center text-sm text-muted-foreground pt-4">No special events</div>
                  ) : (
