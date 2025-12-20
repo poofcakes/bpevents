@@ -2,10 +2,11 @@
 
 "use client";
 
-import { useMemo, Fragment, useState, useEffect } from 'react';
+import { useMemo, Fragment, useState, useEffect, useRef, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { events, GameEvent } from '@/lib/events';
+import { useEventPreferences, filterEventsByPreferences } from './EventPreferences';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 import { Star, Swords, Zap, Crown, Gamepad2, Footprints, Users, Gift, UtensilsCrossed, HeartHandshake, ShieldCheck, Clock, KeySquare, Trophy, ChevronLeft, ChevronRight, BrainCircuit, ShieldAlert } from 'lucide-react';
 import { getGameTime, getWeekPeriod, getGameDate } from '@/lib/time';
@@ -19,6 +20,48 @@ const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const GAME_LAUNCH_DATE = new Date('2025-10-09T05:00:00Z'); // Game launches at reset time on Thursday Oct 9th.
 // The ISO week for Oct 9, 2025 starts on Monday, Oct 6, 2025
 const GAME_LAUNCH_WEEK_START = new Date('2025-10-06T00:00:00Z');
+
+// Reusable tooltip content component
+const WeeklyTooltipContent = memo(({ event, timeSummary }: { event: GameEvent; timeSummary: string }) => {
+    const dateFormat = 'MMM d, yyyy';
+    
+    return (
+        <div className="rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-lg max-w-xs">
+            <p className="font-bold">{event.name}</p>
+            {timeSummary && <p className="text-sm text-muted-foreground">{timeSummary}</p>}
+            {event.dateRange && (
+                <div className="text-xs text-muted-foreground/80 mt-2 border-t pt-2">
+                    <p>Runs from {format(new Date(event.dateRange.start + 'T00:00:00Z'), dateFormat)} until {format(new Date(event.dateRange.end + 'T00:00:00Z'), dateFormat)}</p>
+                </div>
+            )}
+            {event.availability && (
+                <div className="text-xs text-muted-foreground/80 mt-2 border-t pt-2">
+                    {event.availability.added && !event.availability.removed && (
+                        <p>Added to game on {format(new Date(event.availability.added + 'T00:00:00Z'), dateFormat)}</p>
+                    )}
+                    {event.availability.added && event.availability.removed && (
+                        <p>Available from {format(new Date(event.availability.added + 'T00:00:00Z'), dateFormat)} until {format(new Date(event.availability.removed + 'T00:00:00Z'), dateFormat)}</p>
+                    )}
+                    {!event.availability.added && event.availability.removed && (
+                        <p>Removed from game on {format(new Date(event.availability.removed + 'T00:00:00Z'), dateFormat)}</p>
+                    )}
+                </div>
+            )}
+            {event.dateRanges && (
+                <div className="text-xs text-muted-foreground/80 mt-2 border-t pt-2 space-y-1">
+                    <p>Active during these periods:</p>
+                    {event.dateRanges.map((range, i) => (
+                       <p key={i}>
+                         {format(new Date(range.start + 'T00:00:00Z'), dateFormat)} - {format(new Date(range.end + 'T00:00:00Z'), dateFormat)}
+                       </p>
+                    ))}
+                </div>
+            )}
+            <p className="text-xs italic text-muted-foreground max-w-xs">{event.description}</p>
+        </div>
+    );
+});
+WeeklyTooltipContent.displayName = 'WeeklyTooltipContent';
 
 const CategoryIcons: Record<GameEvent['category'], React.ElementType> = {
     'Boss': Swords,
@@ -61,6 +104,83 @@ const isDailyEvent = (event: GameEvent) => {
 }
 
 const WeeklyEvent = ({ event }: { event: GameEvent }) => {
+    const [mounted, setMounted] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
+    const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
+    const tooltipRef = useRef<HTMLDivElement>(null);
+    
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+    
+    useEffect(() => {
+        if (!isHovered) return;
+        const handleMouseMove = (e: MouseEvent) => {
+            setMousePos({ x: e.clientX, y: e.clientY });
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, [isHovered]);
+    
+    const [tooltipDimensions, setTooltipDimensions] = useState<{ width: number; height: number }>({ width: 280, height: 150 });
+    
+    useEffect(() => {
+        if (!tooltipRef.current || !isHovered) return;
+        const updateDimensions = () => {
+            if (tooltipRef.current) {
+                const rect = tooltipRef.current.getBoundingClientRect();
+                setTooltipDimensions({ width: rect.width, height: rect.height });
+            }
+        };
+        const timeoutId = setTimeout(updateDimensions, 0);
+        updateDimensions();
+        return () => clearTimeout(timeoutId);
+    }, [isHovered, mousePos]);
+    
+    const tooltipStyle = useMemo(() => {
+        if (!mousePos || !isHovered || typeof window === 'undefined') return {};
+        const offset = 12;
+        const tooltipWidth = tooltipDimensions.width || 280;
+        const tooltipHeight = tooltipDimensions.height || 150;
+        
+        const anchorX = mousePos.x;
+        const anchorY = mousePos.y;
+        
+        const spaceRight = window.innerWidth - anchorX;
+        const spaceLeft = anchorX;
+        const spaceBottom = window.innerHeight - anchorY;
+        const spaceTop = anchorY;
+        
+        let leftPos: number;
+        if (spaceRight >= tooltipWidth + offset) {
+            leftPos = anchorX + offset;
+        } else if (spaceLeft >= tooltipWidth + offset) {
+            leftPos = anchorX - tooltipWidth - offset;
+        } else {
+            leftPos = Math.max(offset, Math.min(anchorX - tooltipWidth / 2, window.innerWidth - tooltipWidth - offset));
+        }
+        
+        let topPos: number;
+        if (spaceBottom >= tooltipHeight + offset) {
+            topPos = anchorY + offset;
+        } else if (spaceTop >= tooltipHeight + offset) {
+            topPos = anchorY - tooltipHeight - offset;
+        } else {
+            topPos = Math.max(offset, Math.min(anchorY - tooltipHeight / 2, window.innerHeight - tooltipHeight - offset));
+        }
+        
+        leftPos = Math.max(offset, Math.min(leftPos, window.innerWidth - tooltipWidth - offset));
+        topPos = Math.max(offset, Math.min(topPos, window.innerHeight - tooltipHeight - offset));
+        
+        return {
+            position: 'fixed' as const,
+            left: `${leftPos}px`,
+            top: `${topPos}px`,
+            zIndex: 999999,
+            pointerEvents: 'none' as const,
+        };
+    }, [mousePos, isHovered, tooltipDimensions]);
+    
     const Icon = CategoryIcons[event.category] || Star;
     const colorClass = CategoryColors[event.category] || 'bg-secondary';
     const timeZone = 'UTC'; // Weekly is always game time
@@ -90,64 +210,115 @@ const WeeklyEvent = ({ event }: { event: GameEvent }) => {
     }
 
     return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <div className={cn(
+        <>
+            <div 
+                className={cn(
                     "rounded-md px-2 py-1 flex items-center gap-2 text-xs font-semibold cursor-default h-7", 
                     colorClass
-                )}>
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate flex-1">{event.name}</span>
-                    {(event.dateRange || event.dateRanges) && (
-                         <Tooltip>
-                            <TooltipTrigger onClick={(e) => e.stopPropagation()}>
-                                <Clock className="h-3 w-3 text-muted-foreground" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Time-Limited Event</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    )}
-                </div>
-            </TooltipTrigger>
-            <TooltipContent>
-                <p className="font-bold">{event.name}</p>
-                {timeSummary && <p className="text-sm text-muted-foreground">{timeSummary}</p>}
-                {event.dateRange && (
-                    <div className="text-xs text-muted-foreground/80 mt-2 border-t pt-2">
-                        <p>Runs from {format(new Date(event.dateRange.start + 'T00:00:00Z'), dateFormat)} until {format(new Date(event.dateRange.end + 'T00:00:00Z'), dateFormat)}</p>
-                    </div>
                 )}
-                {event.availability && (
-                    <div className="text-xs text-muted-foreground/80 mt-2 border-t pt-2">
-                        {event.availability.added && !event.availability.removed && (
-                            <p>Added to game on {format(new Date(event.availability.added + 'T00:00:00Z'), dateFormat)}</p>
-                        )}
-                        {event.availability.added && event.availability.removed && (
-                            <p>Available from {format(new Date(event.availability.added + 'T00:00:00Z'), dateFormat)} until {format(new Date(event.availability.removed + 'T00:00:00Z'), dateFormat)}</p>
-                        )}
-                        {!event.availability.added && event.availability.removed && (
-                            <p>Removed from game on {format(new Date(event.availability.removed + 'T00:00:00Z'), dateFormat)}</p>
-                        )}
-                    </div>
+                onMouseEnter={(e) => {
+                    setIsHovered(true);
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                }}
+                onMouseLeave={() => {
+                    setIsHovered(false);
+                    setMousePos(null);
+                }}
+            >
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate flex-1">{event.name}</span>
+                {(event.dateRange || event.dateRanges) && (
+                    <Clock className="h-3 w-3 text-muted-foreground" />
                 )}
-                 {event.dateRanges && (
-                    <div className="text-xs text-muted-foreground/80 mt-2 border-t pt-2 space-y-1">
-                        <p>Active during these periods:</p>
-                        {event.dateRanges.map((range, i) => (
-                           <p key={i}>
-                             {format(new Date(range.start + 'T00:00:00Z'), dateFormat)} - {format(new Date(range.end + 'T00:00:00Z'), dateFormat)}
-                           </p>
-                        ))}
-                    </div>
-                )}
-                <p className="text-xs italic text-muted-foreground max-w-xs">{event.description}</p>
-            </TooltipContent>
-        </Tooltip>
+            </div>
+            {mounted && isHovered && mousePos && typeof window !== 'undefined' && createPortal(
+                <div ref={tooltipRef} style={tooltipStyle}>
+                    <WeeklyTooltipContent event={event} timeSummary={timeSummary} />
+                </div>,
+                document.body
+            )}
+        </>
     );
 };
 
 const WeeklyEventBar = ({ event, daySpans }: { event: GameEvent; daySpans: number[] }) => {
+    const [mounted, setMounted] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
+    const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
+    const tooltipRef = useRef<HTMLDivElement>(null);
+    
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+    
+    useEffect(() => {
+        if (!isHovered) return;
+        const handleMouseMove = (e: MouseEvent) => {
+            setMousePos({ x: e.clientX, y: e.clientY });
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, [isHovered]);
+    
+    const [tooltipDimensions, setTooltipDimensions] = useState<{ width: number; height: number }>({ width: 280, height: 150 });
+    
+    useEffect(() => {
+        if (!tooltipRef.current || !isHovered) return;
+        const updateDimensions = () => {
+            if (tooltipRef.current) {
+                const rect = tooltipRef.current.getBoundingClientRect();
+                setTooltipDimensions({ width: rect.width, height: rect.height });
+            }
+        };
+        const timeoutId = setTimeout(updateDimensions, 0);
+        updateDimensions();
+        return () => clearTimeout(timeoutId);
+    }, [isHovered, mousePos]);
+    
+    const tooltipStyle = useMemo(() => {
+        if (!mousePos || !isHovered || typeof window === 'undefined') return {};
+        const offset = 12;
+        const tooltipWidth = tooltipDimensions.width || 280;
+        const tooltipHeight = tooltipDimensions.height || 150;
+        
+        const anchorX = mousePos.x;
+        const anchorY = mousePos.y;
+        
+        const spaceRight = window.innerWidth - anchorX;
+        const spaceLeft = anchorX;
+        const spaceBottom = window.innerHeight - anchorY;
+        const spaceTop = anchorY;
+        
+        let leftPos: number;
+        if (spaceRight >= tooltipWidth + offset) {
+            leftPos = anchorX + offset;
+        } else if (spaceLeft >= tooltipWidth + offset) {
+            leftPos = anchorX - tooltipWidth - offset;
+        } else {
+            leftPos = Math.max(offset, Math.min(anchorX - tooltipWidth / 2, window.innerWidth - tooltipWidth - offset));
+        }
+        
+        let topPos: number;
+        if (spaceBottom >= tooltipHeight + offset) {
+            topPos = anchorY + offset;
+        } else if (spaceTop >= tooltipHeight + offset) {
+            topPos = anchorY - tooltipHeight - offset;
+        } else {
+            topPos = Math.max(offset, Math.min(anchorY - tooltipHeight / 2, window.innerHeight - tooltipHeight - offset));
+        }
+        
+        leftPos = Math.max(offset, Math.min(leftPos, window.innerWidth - tooltipWidth - offset));
+        topPos = Math.max(offset, Math.min(topPos, window.innerHeight - tooltipHeight - offset));
+        
+        return {
+            position: 'fixed' as const,
+            left: `${leftPos}px`,
+            top: `${topPos}px`,
+            zIndex: 999999,
+            pointerEvents: 'none' as const,
+        };
+    }, [mousePos, isHovered, tooltipDimensions]);
+    
     const Icon = CategoryIcons[event.category] || Star;
     const colorClass = CategoryColors[event.category] || 'bg-secondary';
     const timeZone = 'UTC';
@@ -182,69 +353,39 @@ const WeeklyEventBar = ({ event, daySpans }: { event: GameEvent; daySpans: numbe
         timeSummary = 'Resets daily';
     }
 
-
     return (
         <div className="px-px" style={{ paddingTop: '2px', paddingBottom: '2px'}}>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <div
-                        className={cn("rounded-md px-2 py-1 flex items-center gap-2 text-xs font-semibold cursor-default h-7 relative", colorClass)}
-                        style={{ left, width }}
-                    >
-                        <Icon className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate flex-1">{event.name}</span>
-                        {(event.dateRange || event.dateRanges) && (
-                            <Tooltip>
-                                <TooltipTrigger onClick={(e) => e.stopPropagation()}>
-                                    <Clock className="h-3 w-3 text-muted-foreground" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Time-Limited Event</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        )}
-                    </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p className="font-bold">{event.name}</p>
-                    <p className="text-sm text-muted-foreground">{timeSummary}</p>
-                     {event.dateRange && (
-                        <div className="text-xs text-muted-foreground/80 mt-2 border-t pt-2">
-                            <p>Runs from {format(new Date(event.dateRange.start + 'T00:00:00Z'), dateFormat)} until {format(new Date(event.dateRange.end + 'T00:00:00Z'), dateFormat)}</p>
-                        </div>
-                    )}
-                    {event.availability && (
-                        <div className="text-xs text-muted-foreground/80 mt-2 border-t pt-2">
-                            {event.availability.added && !event.availability.removed && (
-                                <p>Added to game on {format(new Date(event.availability.added + 'T00:00:00Z'), dateFormat)}</p>
-                            )}
-                            {event.availability.added && event.availability.removed && (
-                                <p>Available from {format(new Date(event.availability.added + 'T00:00:00Z'), dateFormat)} until {format(new Date(event.availability.removed + 'T00:00:00Z'), dateFormat)}</p>
-                            )}
-                            {!event.availability.added && event.availability.removed && (
-                                <p>Removed from game on {format(new Date(event.availability.removed + 'T00:00:00Z'), dateFormat)}</p>
-                            )}
-                        </div>
-                    )}
-                    {event.dateRanges && (
-                        <div className="text-xs text-muted-foreground/80 mt-2 border-t pt-2 space-y-1">
-                            <p>Active during these periods:</p>
-                            {event.dateRanges.map((range, i) => (
-                               <p key={i}>
-                                 {format(new Date(range.start + 'T00:00:00Z'), dateFormat)} - {format(new Date(range.end + 'T00:00:00Z'), dateFormat)}
-                               </p>
-                            ))}
-                        </div>
-                    )}
-                    <p className="text-xs italic text-muted-foreground max-w-xs">{event.description}</p>
-                </TooltipContent>
-            </Tooltip>
+            <div
+                className={cn("rounded-md px-2 py-1 flex items-center gap-2 text-xs font-semibold cursor-default h-7 relative", colorClass)}
+                style={{ left, width }}
+                onMouseEnter={(e) => {
+                    setIsHovered(true);
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                }}
+                onMouseLeave={() => {
+                    setIsHovered(false);
+                    setMousePos(null);
+                }}
+            >
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate flex-1">{event.name}</span>
+                {(event.dateRange || event.dateRanges) && (
+                    <Clock className="h-3 w-3 text-muted-foreground" />
+                )}
+            </div>
+            {mounted && isHovered && mousePos && typeof window !== 'undefined' && createPortal(
+                <div ref={tooltipRef} style={tooltipStyle}>
+                    <WeeklyTooltipContent event={event} timeSummary={timeSummary} />
+                </div>,
+                document.body
+            )}
         </div>
     );
 };
 
 
 export default function WeeklyTimeline() {
+    const { isCategoryEnabled } = useEventPreferences();
     const [currentDate, setCurrentDate] = useState(() => new Date());
     const [hideDaily, setHideDaily] = useState(false);
     const [hidePermanent, setHidePermanent] = useState(false);
@@ -347,7 +488,8 @@ export default function WeeklyTimeline() {
             return true;
         };
 
-        const filteredEvents = events.filter(event => {
+        const prefilteredEvents = filterEventsByPreferences(events, isCategoryEnabled);
+        const filteredEvents = prefilteredEvents.filter(event => {
             // When enabled, only show time-limited events (those with dateRange or dateRanges)
             if (hidePermanent && !event.dateRange && !event.dateRanges) {
                 return false;
@@ -532,7 +674,6 @@ export default function WeeklyTimeline() {
     }
 
     return (
-        <TooltipProvider delayDuration={100}>
             <Card className="w-full">
                 <CardHeader>
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -611,8 +752,44 @@ export default function WeeklyTimeline() {
                             Jump to This Week
                         </Button>
                     )}
+                    
+                    {(() => {
+                        // Collect categories from events actually shown in the current view
+                        const shownCategories = new Set<GameEvent['category']>();
+                        daySpecificEventsByDay.forEach(day => {
+                            Object.values(day).flat().forEach(event => shownCategories.add(event.category));
+                        });
+                        filteredMultiDayEvents.forEach(({ event }) => shownCategories.add(event.category));
+                        
+                        const categoryOrder: GameEvent['category'][] = ['World Boss Crusade', 'Dungeon Unlock', 'Raid Unlock', 'Event', 'Guild', 'Patrol', 'Social', 'Mini-game', 'Buff', 'Roguelike'];
+                        const legendItems = categoryOrder
+                            .filter(category => shownCategories.has(category))
+                            .map(category => ({
+                                name: category,
+                                icon: CategoryIcons[category],
+                                color: CategoryColors[category]
+                            }))
+                            .filter(item => item.icon && item.color);
+                        
+                        if (legendItems.length === 0) return null;
+                        
+                        return (
+                            <div className="border-t pt-4 mt-4">
+                                <h4 className="text-sm font-semibold mb-2">Legend</h4>
+                                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-x-3 gap-y-2">
+                                    {legendItems.map(({ name, icon: Icon, color }) => (
+                                        <div key={name} className="flex items-center gap-1.5 text-xs">
+                                            <div className={cn("h-4 w-4 rounded-sm border flex items-center justify-center flex-shrink-0", color.replace(/bg-\w+\/\d+/, ''))}>
+                                                <Icon className={cn("h-2.5 w-2.5", color.replace(/border-\w+/, '').replace(/bg-\w+\/\d+/, ''))} />
+                                            </div>
+                                            <span className="font-semibold whitespace-nowrap">{name.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </CardContent>
             </Card>
-        </TooltipProvider>
     );
 }

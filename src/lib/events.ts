@@ -237,6 +237,7 @@ export const events: GameEvent[] = [
     },
     durationMinutes: 30,
     availability: {
+        added: '2025-10-13',
         removed: '2025-11-25'
     }
   },
@@ -256,6 +257,7 @@ export const events: GameEvent[] = [
     },
     durationMinutes: 30,
     availability: {
+        added: '2025-10-13',
         removed: '2025-11-25'
     }
   },
@@ -398,10 +400,11 @@ export const events: GameEvent[] = [
     seasonalCategory: 'Winter Fest',
     description: 'Hunting Event: Coming Soon!',
     schedule: { type: 'none' },
-    dateRange: {
-        start: '2025-12-24',
-        end: '2026-01-05'
-    }
+    dateRanges: [
+      { start: '2025-12-24', end: '2025-12-27' },
+      { start: '2025-12-31', end: '2025-12-31' },
+      { start: '2026-01-01', end: '2026-01-03' }
+    ]
   },
   {
     name: 'Ancestral Ash Pact (Exchange Event)',
@@ -526,6 +529,9 @@ export const events: GameEvent[] = [
       ]
     },
     durationMinutes: 30,
+    availability: {
+      added: '2025-10-13'
+    }
   },
   {
     name: 'City Rally',
@@ -599,7 +605,7 @@ export const events: GameEvent[] = [
     name: 'Guild Hunt',
     type: 'Leisure Activity',
     category: 'Guild',
-    description: 'Team up with your Guild to hunt in the wilds, complete shared goals, and obtain challenge rewards.',
+    description: 'Team up with your Guild to kill bosses.',
     schedule: {
       type: 'daily-intervals-specific',
       days: [5, 6, 0], // Fri, Sat, Sun

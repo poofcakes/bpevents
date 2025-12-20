@@ -13,20 +13,20 @@ interface HeaderProps {
 export default function Header({ timeMode, setTimeMode, timeFormat, setTimeFormat }: HeaderProps) {
   return (
     <header className="bg-card/50 backdrop-blur-sm border-b border-border sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
-        <div className="flex items-center gap-3">
+      <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 flex flex-wrap justify-between items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="relative bounce-gentle">
             <Image
               src={getImagePath("/images/clock.webp")}
               alt="Clock logo"
               width={32}
               height={32}
-              className="flex-shrink-0"
+              className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8"
               priority
             />
-            <span className="absolute -top-1 -right-1 text-lg animate-pulse">✨</span>
+            <span className="absolute -top-1 -right-1 text-sm sm:text-lg animate-pulse">✨</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary-foreground font-headline tracking-tight">
+          <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-primary-foreground font-headline tracking-tight">
             BP:SR Event Tracker
           </h1>
         </div>

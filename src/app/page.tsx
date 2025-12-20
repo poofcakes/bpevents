@@ -10,7 +10,9 @@ import ResetTimers from '@/components/ResetTimers';
 import Image from 'next/image';
 import Link from 'next/link';
 import AccentColorSelector from '@/components/AccentColorSelector';
+import { EventPreferencesPanel, EventPreferencesProvider } from '@/components/EventPreferences';
 import { getImagePath } from '@/lib/utils';
+import { AlarmClock, Calendar, CalendarDays, CalendarRange, Target } from 'lucide-react';
 
 export type TimeDisplayMode = 'game' | 'local';
 export type TimeFormat = '12h' | '24h';
@@ -49,41 +51,47 @@ export default function Home() {
   }, [timeFormat, mounted]);
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header 
-        timeMode={timeMode} 
-        setTimeMode={setTimeMode} 
-        timeFormat={timeFormat}
-        setTimeFormat={setTimeFormat}
-      />
-      <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
+    <EventPreferencesProvider>
+      <div className="flex flex-col min-h-screen">
+        <Header 
+          timeMode={timeMode} 
+          setTimeMode={setTimeMode} 
+          timeFormat={timeFormat}
+          setTimeFormat={setTimeFormat}
+        />
+        <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
         <div>
-          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg">
-            ⏰ Reset Timers
+          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg flex items-center gap-2">
+            <AlarmClock className="h-7 w-7" />
+            Reset Timers
           </h2>
           <ResetTimers />
         </div>
         <div>
-          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg">
-            📅 Today's Timeline
+          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg flex items-center gap-2">
+            <Calendar className="h-7 w-7" />
+            Today's Timeline
           </h2>
           <DailyTimeline timeMode={timeMode} timeFormat={timeFormat} />
         </div>
         <div>
-          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg">
-            📆 This Week's Schedule
+          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg flex items-center gap-2">
+            <CalendarDays className="h-7 w-7" />
+            This Week's Schedule
           </h2>
           <WeeklyTimeline />
         </div>
         <div>
-          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg">
-            🗓️ Monthly Events
+          <h2 className="text-3xl font-bold mb-6 font-headline gradient-text drop-shadow-lg flex items-center gap-2">
+            <CalendarRange className="h-7 w-7" />
+            Monthly Events
           </h2>
           <MonthlyTimeline />
         </div>
         <div className="space-y-4">
-           <h2 className="text-3xl font-bold font-headline gradient-text drop-shadow-lg">
-            🎯 Monster Hunter Times
+           <h2 className="text-3xl font-bold font-headline gradient-text drop-shadow-lg flex items-center gap-2">
+            <Target className="h-7 w-7" />
+            Monster Hunter Times
           </h2>
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="lg:w-80 flex-shrink-0">
@@ -93,20 +101,29 @@ export default function Home() {
                   <p className="text-sm text-muted-foreground">
                     Field bosses respawn every <span className="font-semibold text-foreground">:00</span> and <span className="font-semibold text-foreground">:30</span> past the hour.
                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    For detailed world boss respawn times, please refer to <Link href="https://bptimer.com/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline transition-colors font-semibold">bptimer.com</Link>.
+                  </p>
+                </div>
+                <div className="pt-2 border-t space-y-2">
                 </div>
                 <div className="space-y-2">
                   <h3 className="font-semibold text-foreground">Rare Spawns</h3>
                   <p className="text-sm text-muted-foreground">
                     For rare spawn locations, refer to the map on the right.
                   </p>
-                </div>
-                <div className="pt-2 border-t space-y-2">
-                  <p className="text-xs text-muted-foreground">
-                    For detailed world boss respawn times, please refer to <Link href="https://bptimer.com/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline transition-colors font-semibold">bptimer.com</Link>.
-                  </p>
                   <p className="text-xs text-muted-foreground">
                     For Loyal Boar (Golden Pig) respawn times, please refer to <Link href="https://pigtastic.netlify.app/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline transition-colors font-semibold">pigtastic.netlify.app</Link>.
                   </p>
+                </div>
+                <div className="pt-2 flex justify-center">
+                  <Image
+                    src={getImagePath("/images/pigblanket.webp")}
+                    alt="Pig blanket"
+                    width={200}
+                    height={200}
+                    className="w-auto h-auto max-w-full"
+                  />
                 </div>
               </div>
             </div>
@@ -131,6 +148,18 @@ export default function Home() {
         <p>Last Updated: 20.12.2025</p>
         <AccentColorSelector />
       </footer>
-    </div>
+        <EventPreferencesPanel />
+        <div className="fixed bottom-0 left-0 z-30 pointer-events-none">
+          <Image
+            src={getImagePath("/images/airona_peek.webp")}
+            alt="Airona peek"
+            width={200}
+            height={200}
+            className="w-auto h-auto max-w-[80px] sm:max-w-[120px] md:max-w-[150px] lg:max-w-[200px]"
+            priority
+          />
+        </div>
+      </div>
+    </EventPreferencesProvider>
   );
 }

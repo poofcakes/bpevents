@@ -2,18 +2,39 @@
 
 "use client";
 
-import { useState, useMemo, useRef, useEffect, Fragment } from 'react';
+import { useState, useMemo, useRef, useEffect, Fragment, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { events, GameEvent } from '@/lib/events';
+import { useEventPreferences, filterEventsByPreferences } from './EventPreferences';
 import { getGameTime, toLocalTime, DAILY_RESET_HOUR_UTC, GAME_TIMEZONE_OFFSET } from '@/lib/time';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Star, Crown, Swords, Ghost, Gamepad2, Users, Footprints, Gift, UtensilsCrossed, HeartHandshake, ShieldCheck, KeySquare, CalendarHeart, BrainCircuit, ShieldAlert } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 import { format, addDays, startOfWeek } from 'date-fns';
 
 const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Reusable tooltip content component for monthly timeline
+const MonthlyTooltipContent = memo(({ event, originalStartDate, originalEndDate }: { event: GameEvent; originalStartDate: Date; originalEndDate: Date | null }) => {
+    const dateFormat = 'MMM d, yyyy';
+    
+    return (
+        <div className="rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-lg max-w-xs">
+            <p className="font-bold">{event.name}</p>
+            <div className="text-xs text-muted-foreground/80 mt-2 border-t pt-2">
+                {originalEndDate ? (
+                    <p>Runs from {format(originalStartDate, dateFormat)} until {format(originalEndDate, dateFormat)}</p>
+                ) : (
+                    <p>Became available on {format(originalStartDate, dateFormat)}</p>
+                )}
+            </div>
+            <p className="text-xs italic text-muted-foreground max-w-xs">{event.description}</p>
+        </div>
+    );
+});
+MonthlyTooltipContent.displayName = 'MonthlyTooltipContent';
 
 const SeasonalCategoryIcons: Record<NonNullable<GameEvent['seasonalCategory']>, React.ElementType> = {
     'Kanamia Harvest Festival': UtensilsCrossed,
@@ -111,37 +132,116 @@ const MonthlyEventBar = ({ event, range, monthStart, daysInMonth }: { event: Gam
     const dateFormat = 'MMM d, yyyy';
     const originalStartDate = parseDate(range.start);
     const originalEndDate = range.end ? parseDate(range.end) : null;
+    
+    const [mounted, setMounted] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
+    const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
+    const tooltipRef = useRef<HTMLDivElement>(null);
+    
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+    
+    useEffect(() => {
+        if (!isHovered) return;
+        const handleMouseMove = (e: MouseEvent) => {
+            setMousePos({ x: e.clientX, y: e.clientY });
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, [isHovered]);
+    
+    const [tooltipDimensions, setTooltipDimensions] = useState<{ width: number; height: number }>({ width: 280, height: 150 });
+    
+    useEffect(() => {
+        if (!tooltipRef.current || !isHovered) return;
+        const updateDimensions = () => {
+            if (tooltipRef.current) {
+                const rect = tooltipRef.current.getBoundingClientRect();
+                setTooltipDimensions({ width: rect.width, height: rect.height });
+            }
+        };
+        const timeoutId = setTimeout(updateDimensions, 0);
+        updateDimensions();
+        return () => clearTimeout(timeoutId);
+    }, [isHovered, mousePos]);
+    
+    const tooltipStyle = useMemo(() => {
+        if (!mousePos || !isHovered || typeof window === 'undefined') return {};
+        const offset = 12;
+        const tooltipWidth = tooltipDimensions.width || 280;
+        const tooltipHeight = tooltipDimensions.height || 150;
+        
+        const anchorX = mousePos.x;
+        const anchorY = mousePos.y;
+        
+        const spaceRight = window.innerWidth - anchorX;
+        const spaceLeft = anchorX;
+        const spaceBottom = window.innerHeight - anchorY;
+        const spaceTop = anchorY;
+        
+        let leftPos: number;
+        if (spaceRight >= tooltipWidth + offset) {
+            leftPos = anchorX + offset;
+        } else if (spaceLeft >= tooltipWidth + offset) {
+            leftPos = anchorX - tooltipWidth - offset;
+        } else {
+            leftPos = Math.max(offset, Math.min(anchorX - tooltipWidth / 2, window.innerWidth - tooltipWidth - offset));
+        }
+        
+        let topPos: number;
+        if (spaceBottom >= tooltipHeight + offset) {
+            topPos = anchorY + offset;
+        } else if (spaceTop >= tooltipHeight + offset) {
+            topPos = anchorY - tooltipHeight - offset;
+        } else {
+            topPos = Math.max(offset, Math.min(anchorY - tooltipHeight / 2, window.innerHeight - tooltipHeight - offset));
+        }
+        
+        leftPos = Math.max(offset, Math.min(leftPos, window.innerWidth - tooltipWidth - offset));
+        topPos = Math.max(offset, Math.min(topPos, window.innerHeight - tooltipHeight - offset));
+        
+        return {
+            position: 'fixed' as const,
+            left: `${leftPos}px`,
+            top: `${topPos}px`,
+            zIndex: 999999,
+            pointerEvents: 'none' as const,
+        };
+    }, [mousePos, isHovered, tooltipDimensions]);
 
     return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <div
-                    className={cn("absolute rounded-lg px-2 py-1 flex items-center gap-2 text-xs font-bold z-10 h-8", colorClasses.bg, colorClasses.border)}
-                    style={{
-                        left: `${leftPercent}%`,
-                        width: `max(calc(${widthPercent}% - 2px), 24px)`,
-                    }}
-                >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{event.name}</span>
-                </div>
-            </TooltipTrigger>
-            <TooltipContent>
-                <p className="font-bold">{event.name}</p>
-                <div className="text-xs text-muted-foreground/80 mt-2 border-t pt-2">
-                    {originalEndDate ? (
-                        <p>Runs from {format(originalStartDate, dateFormat)} until {format(originalEndDate, dateFormat)}</p>
-                    ) : (
-                        <p>Became available on {format(originalStartDate, dateFormat)}</p>
-                    )}
-                </div>
-                <p className="text-xs italic text-muted-foreground max-w-xs">{event.description}</p>
-            </TooltipContent>
-        </Tooltip>
+        <>
+            <div
+                className={cn("absolute rounded-lg px-2 py-1 flex items-center gap-2 text-xs font-bold z-10 h-8 cursor-default", colorClasses.bg, colorClasses.border)}
+                style={{
+                    left: `${leftPercent}%`,
+                    width: `max(calc(${widthPercent}% - 2px), 24px)`,
+                }}
+                onMouseEnter={(e) => {
+                    setIsHovered(true);
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                }}
+                onMouseLeave={() => {
+                    setIsHovered(false);
+                    setMousePos(null);
+                }}
+            >
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">{event.name}</span>
+            </div>
+            {mounted && isHovered && mousePos && typeof window !== 'undefined' && createPortal(
+                <div ref={tooltipRef} style={tooltipStyle}>
+                    <MonthlyTooltipContent event={event} originalStartDate={originalStartDate} originalEndDate={originalEndDate} />
+                </div>,
+                document.body
+            )}
+        </>
     );
 };
 
 export default function MonthlyTimeline() {
+    const { isCategoryEnabled } = useEventPreferences();
     const [now, setNow] = useState<Date | null>(null);
 
     const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
@@ -188,7 +288,8 @@ export default function MonthlyTimeline() {
              return true;
         }
 
-        const allEvents = events
+        const prefilteredEvents = filterEventsByPreferences(events, isCategoryEnabled);
+        const allEvents = prefilteredEvents
             .filter(e => {
                 if (deprecatedPatrols.includes(e.name)) return false;
                 if (!e.dateRange && !e.dateRanges) return false;
@@ -235,7 +336,7 @@ export default function MonthlyTimeline() {
             roguelikeEvents: allEvents.filter(e => e.category === 'Roguelike'),
             otherEvents: allEvents.filter(e => e.category !== 'Dungeon Unlock' && e.category !== 'Raid Unlock' && e.category !== 'Roguelike'),
         }
-    }, [monthStart]);
+    }, [monthStart, isCategoryEnabled]);
 
     const releaseDate = new Date('2025-10-09T00:00:00Z');
     const canGoBack = useMemo(() => {
@@ -307,7 +408,6 @@ export default function MonthlyTimeline() {
     }
     
     return (
-        <TooltipProvider>
             <Card className="p-4 space-y-4 w-full">
                 <div className="flex justify-between items-center">
                     <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoBack}>
@@ -433,6 +533,5 @@ export default function MonthlyTimeline() {
                     </Button>
                  )}
             </Card>
-        </TooltipProvider>
     );
 }
