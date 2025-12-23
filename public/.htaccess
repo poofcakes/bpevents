@@ -1,0 +1,45 @@
+# Enable rewrite engine
+RewriteEngine On
+
+# Serve static files from _next directory
+RewriteCond %{REQUEST_URI} ^/_next/static
+RewriteRule ^_next/static/(.*)$ /_next/static/$1 [L]
+
+# Serve static files from images directory
+RewriteCond %{REQUEST_URI} ^/images/
+RewriteRule ^images/(.*)$ /images/$1 [L]
+
+# Serve other static files (favicon, etc.)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Handle client-side routing - redirect all requests to index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ /index.html [L]
+
+# Set proper MIME types for JavaScript and CSS
+<IfModule mod_mime.c>
+  AddType application/javascript js
+  AddType text/css css
+</IfModule>
+
+# Enable CORS for static assets (if needed)
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|woff|woff2|ttf|eot|svg|png|jpg|jpeg|gif|webp|ico)$">
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+</IfModule>
+
+# Cache static assets
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+</IfModule>
+

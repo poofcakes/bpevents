@@ -36,8 +36,8 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build
-        env:
-          NEXT_PUBLIC_BASE_PATH: /bpevents
+        #env:
+          #NEXT_PUBLIC_BASE_PATH: /bpevents
         run: npm run build:gh
       - name: Check build output exists
         run: |
