@@ -9,7 +9,7 @@ import { useEventPreferences, filterEventsByPreferences } from './EventPreferenc
 import { getGameTime, toLocalTime, DAILY_RESET_HOUR_UTC, GAME_TIMEZONE_OFFSET } from '@/lib/time';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Star, Crown, Swords, Ghost, Gamepad2, Users, Footprints, Gift, UtensilsCrossed, HeartHandshake, ShieldCheck, KeySquare, CalendarHeart, BrainCircuit, ShieldAlert, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Crown, Swords, Ghost, Gamepad2, Users, Footprints, Gift, UtensilsCrossed, HeartHandshake, ShieldCheck, KeySquare, CalendarHeart, BrainCircuit, ShieldAlert, RotateCcw, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, addDays, startOfWeek } from 'date-fns';
 import { Checkbox } from './ui/checkbox';
@@ -81,6 +81,7 @@ const CategoryIcons: Record<GameEvent['category'], React.ElementType> = {
     'Boss': Swords,
     'World Boss Crusade': Crown,
     'Event': Star,
+    'Hunting': Target,
     'Social': HeartHandshake,
     'Mini-game': Gamepad2,
     'Patrol': Footprints,
@@ -95,6 +96,7 @@ const CategoryColors: Record<GameEvent['category'], {bg: string, border: string,
     'Boss': { bg: 'bg-destructive/80', border: 'border-destructive', text: 'text-destructive-foreground' },
     'World Boss Crusade': { bg: 'bg-amber-400/80', border: 'border-amber-400', text: 'text-amber-500' },
     'Event': { bg: 'bg-yellow-400/80', border: 'border-yellow-400', text: 'text-yellow-500' },
+    'Hunting': { bg: 'bg-red-500/80', border: 'border-red-500', text: 'text-red-500' },
     'Social': { bg: 'bg-sky-400/80', border: 'border-sky-400', text: 'text-sky-500' },
     'Mini-game': { bg: 'bg-lime-400/80', border: 'border-lime-400', text: 'text-lime-500' },
     'Patrol': { bg: 'bg-neutral-400/80', border: 'border-neutral-400', text: 'text-neutral-400' },

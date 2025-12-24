@@ -8,7 +8,7 @@ import { events, GameEvent } from '@/lib/events';
 import { getGameTime, toLocalTime, formatDuration, getGameDate, DAILY_RESET_HOUR_UTC, getWeekPeriod } from '@/lib/time';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Star, Swords, Crown, Gamepad2, Users, Footprints, ShieldAlert, HeartHandshake, ShieldCheck, KeySquare, BrainCircuit, RotateCcw, PiggyBank, UtensilsCrossed, Gift, CalendarHeart, Ghost } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Swords, Crown, Gamepad2, Users, Footprints, ShieldAlert, HeartHandshake, ShieldCheck, KeySquare, BrainCircuit, RotateCcw, PiggyBank, UtensilsCrossed, Gift, CalendarHeart, Ghost, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TimeDisplayMode, TimeFormat } from '@/app/page';
 import { format } from 'date-fns';
@@ -162,6 +162,7 @@ export const CategoryIcons: Record<GameEvent['category'], React.ElementType> = {
     'Boss': Swords,
     'World Boss Crusade': Crown,
     'Event': Star,
+    'Hunting': Target,
     'Social': HeartHandshake,
     'Mini-game': Gamepad2,
     'Patrol': Footprints,
@@ -176,6 +177,7 @@ const CategoryColors: Record<GameEvent['category'], string> = {
     'Boss': 'border-destructive bg-destructive/20 text-destructive-foreground',
     'World Boss Crusade': 'border-amber-400 bg-amber-400/20 text-amber-500',
     'Event': 'border-purple-400 bg-purple-400/20 text-purple-500',
+    'Hunting': 'border-red-500 bg-red-500/20 text-red-500',
     'Social': 'border-sky-400 bg-sky-400/20 text-sky-500',
     'Mini-game': 'border-lime-400 bg-lime-400/20 text-lime-500',
     'Patrol': 'border-neutral-400 bg-neutral-400/20 text-neutral-400',
@@ -729,7 +731,7 @@ export default function DailyTimeline({ timeMode, timeFormat }: { timeMode: Time
 
     const legendItems = useMemo(() => {
         const items = new Map<string, { icon: React.ElementType, color: string }>();
-        const categoryOrder: GameEvent['category'][] = ['World Boss Crusade', 'Dungeon Unlock', 'Raid Unlock', 'Event', 'Guild', 'Patrol', 'Social', 'Mini-game', 'Buff', 'Roguelike'];
+        const categoryOrder: GameEvent['category'][] = ['World Boss Crusade', 'Dungeon Unlock', 'Raid Unlock', 'Event', 'Hunting', 'Guild', 'Patrol', 'Social', 'Mini-game', 'Buff', 'Roguelike'];
         
         // Collect categories from events actually shown in the current view
         const shownCategories = new Set<GameEvent['category']>();

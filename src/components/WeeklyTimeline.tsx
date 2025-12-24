@@ -8,7 +8,7 @@ import { events, GameEvent } from '@/lib/events';
 import { useEventPreferences, filterEventsByPreferences } from './EventPreferences';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { Star, Swords, Zap, Crown, Gamepad2, Footprints, Users, Gift, UtensilsCrossed, HeartHandshake, ShieldCheck, Clock, KeySquare, Trophy, ChevronLeft, ChevronRight, BrainCircuit, ShieldAlert, RotateCcw, Ghost, CalendarHeart } from 'lucide-react';
+import { Star, Swords, Zap, Crown, Gamepad2, Footprints, Users, Gift, UtensilsCrossed, HeartHandshake, ShieldCheck, Clock, KeySquare, Trophy, ChevronLeft, ChevronRight, BrainCircuit, ShieldAlert, RotateCcw, Ghost, CalendarHeart, Target } from 'lucide-react';
 import { getGameTime, getWeekPeriod, getGameDate } from '@/lib/time';
 import { format, getWeek, isSameDay, startOfDay, differenceInCalendarWeeks, addDays } from 'date-fns';
 import { Badge } from './ui/badge';
@@ -69,6 +69,7 @@ const CategoryIcons: Record<GameEvent['category'], React.ElementType> = {
     'Boss': Swords,
     'World Boss Crusade': Crown,
     'Event': Star,
+    'Hunting': Target,
     'Social': HeartHandshake,
     'Mini-game': Gamepad2,
     'Patrol': Footprints,
@@ -83,6 +84,7 @@ const CategoryColors: Record<GameEvent['category'], string> = {
     'Boss': 'bg-destructive/20 text-destructive-foreground',
     'World Boss Crusade': 'bg-amber-400/20 text-amber-500',
     'Event': 'bg-purple-400/20 text-purple-500',
+    'Hunting': 'bg-red-500/20 text-red-500',
     'Social': 'bg-sky-400/20 text-sky-500',
     'Mini-game': 'bg-lime-400/20 text-lime-500',
     'Patrol': 'bg-neutral-400/20 text-neutral-400',
@@ -112,7 +114,7 @@ const isDailyEvent = (event: GameEvent) => {
     return false;
 }
 
-const WeeklyEvent = ({ event, isCompleted, onToggleCompletion, isCurrentWeek }: { event: GameEvent, isCompleted: boolean, onToggleCompletion: () => void, isCurrentWeek: boolean }) => {
+const WeeklyEvent = ({ event, isCompleted, onToggleCompletion, isCurrentWeek }: { event: GameEvent, isCompleted: boolean | undefined, onToggleCompletion: () => void, isCurrentWeek: boolean }) => {
     const [mounted, setMounted] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
@@ -271,7 +273,7 @@ const WeeklyEvent = ({ event, isCompleted, onToggleCompletion, isCurrentWeek }: 
     );
 };
 
-const WeeklyEventBar = ({ event, daySpans, isCompleted, onToggleCompletion, isCurrentWeek }: { event: GameEvent; daySpans: number[]; isCompleted: boolean; onToggleCompletion: () => void; isCurrentWeek: boolean }) => {
+const WeeklyEventBar = ({ event, daySpans, isCompleted, onToggleCompletion, isCurrentWeek }: { event: GameEvent; daySpans: number[]; isCompleted: boolean | undefined; onToggleCompletion: () => void; isCurrentWeek: boolean }) => {
     const [mounted, setMounted] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
@@ -397,7 +399,7 @@ const WeeklyEventBar = ({ event, daySpans, isCompleted, onToggleCompletion, isCu
                     setMousePos(null);
                 }}
             >
-                {isCurrentWeek && (
+                {(isCurrentWeek || isCompleted !== undefined) && (
                     <Checkbox
                         checked={isCompleted}
                         onCheckedChange={(checked) => {
@@ -641,7 +643,7 @@ export default function WeeklyTimeline() {
         });
         
         const sortDayCategories = (dayCategories: Record<string, GameEvent[]>[]) => {
-            const categoryOrder: GameEvent['category'][] = ['World Boss Crusade', 'Dungeon Unlock', 'Raid Unlock', 'Event', 'Guild', 'Patrol', 'Social', 'Mini-game', 'Buff', 'Roguelike'];
+            const categoryOrder: GameEvent['category'][] = ['World Boss Crusade', 'Dungeon Unlock', 'Raid Unlock', 'Event', 'Hunting', 'Guild', 'Patrol', 'Social', 'Mini-game', 'Buff', 'Roguelike'];
             
             dayCategories.forEach(day => {
                 for (const category in day) {
@@ -716,12 +718,12 @@ export default function WeeklyTimeline() {
                     Object.entries(dayCategories).map(([category, categoryEvents]) => (
                     <div key={category} className="space-y-1">
                         {categoryEvents.map(event => {
-                            const shouldShowCheckbox = (event.category === 'World Boss Crusade' || event.name === 'Guild Dance');
+                            const shouldShowCheckbox = (event.category === 'World Boss Crusade' || event.name === 'Guild Dance' || event.name === 'Snowman Strike! (Hunting Event)');
                             return (
                                 <WeeklyEvent 
                                     key={event.name} 
                                     event={event}
-                                    isCompleted={shouldShowCheckbox && weeklyCompletionsMounted && isEventCompleted(event.name, weekDates[dayIndex])}
+                                    isCompleted={shouldShowCheckbox && weeklyCompletionsMounted ? isEventCompleted(event.name, weekDates[dayIndex]) : undefined}
                                     onToggleCompletion={() => toggleEventCompletion(event.name, weekDates[dayIndex])}
                                     isCurrentWeek={shouldShowCheckbox}
                                 />
@@ -753,17 +755,17 @@ export default function WeeklyTimeline() {
                             </div>
                         <div className="flex items-center gap-2">
                             {weeklyCompletionsMounted && (() => {
-                                // Collect all World Boss Crusade and Guild Dance event names in the current week
+                                // Collect all World Boss Crusade, Guild Dance, and Snowman Strike event names in the current week
                                 const weeklyEventNames: string[] = [];
                                 daySpecificEventsByDay.forEach(day => {
                                     Object.values(day).flat().forEach(event => {
-                                        if ((event.category === 'World Boss Crusade' || event.name === 'Guild Dance') && !weeklyEventNames.includes(event.name)) {
+                                        if ((event.category === 'World Boss Crusade' || event.name === 'Guild Dance' || event.name === 'Snowman Strike! (Hunting Event)') && !weeklyEventNames.includes(event.name)) {
                                             weeklyEventNames.push(event.name);
                                         }
                                     });
                                 });
                                 filteredMultiDayEvents.forEach(({ event }) => {
-                                    if ((event.category === 'World Boss Crusade' || event.name === 'Guild Dance') && !weeklyEventNames.includes(event.name)) {
+                                    if ((event.category === 'World Boss Crusade' || event.name === 'Guild Dance' || event.name === 'Snowman Strike! (Hunting Event)') && !weeklyEventNames.includes(event.name)) {
                                         weeklyEventNames.push(event.name);
                                     }
                                 });
@@ -831,9 +833,9 @@ export default function WeeklyTimeline() {
                                             key={`${event.name}-${daySpans[0]}-${index}`} 
                                             event={event} 
                                             daySpans={daySpans}
-                                            isCompleted={(event.category === 'World Boss Crusade' || event.name === 'Guild Dance') && weeklyCompletionsMounted && isEventCompleted(event.name, weekDates[daySpans[0]])}
+                                            isCompleted={(event.category === 'World Boss Crusade' || event.name === 'Guild Dance' || event.name === 'Snowman Strike! (Hunting Event)') && weeklyCompletionsMounted ? isEventCompleted(event.name, weekDates[daySpans[0]]) : undefined}
                                             onToggleCompletion={() => toggleEventCompletion(event.name, weekDates[daySpans[0]])}
-                                            isCurrentWeek={(event.category === 'World Boss Crusade' || event.name === 'Guild Dance')}
+                                            isCurrentWeek={(event.category === 'World Boss Crusade' || event.name === 'Guild Dance' || event.name === 'Snowman Strike! (Hunting Event)')}
                                         />
                                     ))}
                                 </div>
@@ -856,7 +858,7 @@ export default function WeeklyTimeline() {
                         });
                         filteredMultiDayEvents.forEach(({ event }) => shownCategories.add(event.category));
                         
-                        const categoryOrder: GameEvent['category'][] = ['World Boss Crusade', 'Dungeon Unlock', 'Raid Unlock', 'Event', 'Guild', 'Patrol', 'Social', 'Mini-game', 'Buff', 'Roguelike'];
+                        const categoryOrder: GameEvent['category'][] = ['World Boss Crusade', 'Dungeon Unlock', 'Raid Unlock', 'Event', 'Hunting', 'Guild', 'Patrol', 'Social', 'Mini-game', 'Buff', 'Roguelike'];
                         const legendItems = categoryOrder
                             .filter(category => shownCategories.has(category))
                             .map(category => ({

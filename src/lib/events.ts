@@ -3,7 +3,7 @@
 export interface GameEvent {
   name: string;
   type: 'World Boss' | 'Special Event' | 'Leisure Activity' | 'Unlock';
-  category: 'Boss' | 'World Boss Crusade' | 'Buff' | 'Social' | 'Mini-game' | 'Patrol' | 'Guild' | 'Event' | 'Dungeon Unlock' | 'Raid Unlock' | 'Roguelike';
+  category: 'Boss' | 'World Boss Crusade' | 'Buff' | 'Social' | 'Mini-game' | 'Patrol' | 'Guild' | 'Event' | 'Hunting' | 'Dungeon Unlock' | 'Raid Unlock' | 'Roguelike';
   seasonalCategory?: 'Silverstar Carnival' | 'Halloween' | 'Kanamia Harvest Festival' | 'Winter Fest';
   description: string;
   schedule: Schedule;
@@ -396,7 +396,7 @@ export const events: GameEvent[] = [
   {
     name: 'Snowman Strike! (Hunting Event)',
     type: 'Special Event',
-    category: 'Event',
+    category: 'Hunting',
     seasonalCategory: 'Winter Fest',
     description: 'Hunting Event: Hunt Snow Nappo during the Winter Fest!',
     schedule: {
