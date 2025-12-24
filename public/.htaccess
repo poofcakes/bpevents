@@ -13,21 +13,34 @@ RewriteRule ^images/(.*)$ /images/$1 [L]
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]
 
-# Ensure index.html is served for root and missing files
+# Explicitly set DirectoryIndex to prioritize index.html (this is critical!)
 DirectoryIndex index.html
 
-# Handle client-side routing - redirect all requests to index.html
-# But exclude README.md and other markdown files from being served
+# Prevent README.md and other markdown files from being served (Apache 2.4 syntax)
+<FilesMatch "\.(md|markdown|MD|MARKDOWN)$">
+  Require all denied
+</FilesMatch>
+
+# Enable rewrite engine
+RewriteEngine On
+RewriteBase /
+
+# CRITICAL: If requesting root or README.md, serve/redirect to index.html
+# This prevents README.md from being served even if it exists in the directory
+RewriteCond %{REQUEST_URI} ^/$ [OR]
+RewriteCond %{REQUEST_URI} ^/README\.(md|MD|txt|TXT)?$ [NC]
+RewriteRule ^(.*)$ /index.html [L]
+
+# Serve static files directly (they exist)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Handle client-side routing - redirect all non-file/directory requests to index.html
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} !^/README\.md$ [NC]
-RewriteCond %{REQUEST_URI} !\.md$ [NC]
+RewriteCond %{REQUEST_URI} !^/_next/ [NC]
+RewriteCond %{REQUEST_URI} !^/images/ [NC]
 RewriteRule ^ /index.html [L]
-
-# Explicitly prevent README.md from being served at root
-RewriteCond %{REQUEST_URI} ^/$ [NC]
-RewriteCond %{QUERY_STRING} ^$ [NC]
-RewriteRule ^$ /index.html [L,R=301]
 
 # Set proper MIME types for JavaScript and CSS
 <IfModule mod_mime.c>

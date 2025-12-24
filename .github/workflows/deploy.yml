@@ -49,6 +49,16 @@ jobs:
           echo "Build output verified: $(ls -la ./out | head -5)"
       - name: Add .nojekyll file
         run: touch ./out/.nojekyll
+      - name: Remove README.md from out directory if present
+        run: |
+          if [ -f "./out/README.md" ]; then
+            echo "Removing README.md from out directory"
+            rm -f ./out/README.md
+          fi
+          if [ -f "./out/README.txt" ]; then
+            echo "Removing README.txt from out directory"
+            rm -f ./out/README.txt
+          fi
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact

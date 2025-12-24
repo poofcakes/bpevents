@@ -398,8 +398,16 @@ export const events: GameEvent[] = [
     type: 'Special Event',
     category: 'Event',
     seasonalCategory: 'Winter Fest',
-    description: 'Hunting Event: Coming Soon!',
-    schedule: { type: 'none' },
+    description: 'Hunting Event: Hunt Snow Nappo during the Winter Fest!',
+    schedule: {
+      type: 'daily-intervals',
+      intervals: [
+        { start: { hour: 5, minute: 0 }, end: { hour: 7, minute: 0 } }, // 03-05 UTC-2
+        { start: { hour: 13, minute: 0 }, end: { hour: 15, minute: 0 } }, // 11-13 UTC-2
+        { start: { hour: 21, minute: 0 }, end: { hour: 23, minute: 0 } }, // 19-21 UTC-2
+      ]
+    },
+    durationMinutes: 120, // 2 hours per interval
     dateRanges: [
       { start: '2025-12-24', end: '2025-12-27' },
       { start: '2025-12-31', end: '2025-12-31' },
